@@ -490,7 +490,9 @@ elif selection == "Visualization":
     top_5_regions = region_consumption.nlargest(5)
     flop_5_regions = region_consumption.nsmallest(5)
     fig_top = px.bar(top_5_regions, x=top_5_regions.index, y='consumption_(mw)', title='Top 5 Regions by Energy Usage')
+    fig_top.update_traces(marker_color='green')
     fig_flop = px.bar(flop_5_regions, x=flop_5_regions.index, y='consumption_(mw)', title='Flop 5 Regions by Energy Usage')
+    fig_flop.update_traces(marker_color='red')
     st.plotly_chart(fig_top)
     st.plotly_chart(fig_flop)
 
@@ -499,17 +501,33 @@ elif selection == "Visualization":
     fig = px.density_heatmap(energy_revised, x='consumption_(mw)', y='region', title='Density of Energy Consumption')
     st.plotly_chart(fig)
 
-    st.subheader("Line Plot for Relationship Between Consumption and Temperature Over Time:")
-    fig = px.bar(merged_df, x='New_month', y=['tavg_(°c)', 'consumption_(mw)'],
-    title='Relationship Between Temperature and Consumption Over Time',
-    labels={'New_month': 'Month', 'value': 'Value', 'variable': 'Metric'})
-    st.plotly_chart(fig)
+   
+    # Streamlit app
+    st.subheader("Inverse Relationship Between Temperature and Consumption Over Time")
+
+    # Create figure and axis
+    fig, ax1 = plt.subplots(figsize=(14, 8))
+
+    # Plot temperature
+    sns.lineplot(data=merged_df, x='New_month', y='tavg_(°c)', marker='o', ax=ax1, color='red', label='Temperature')
+    ax1.set_ylabel('Temperature (°C)')
+    ax1.set_xlabel('Month')
+    ax1.set_xticks(range(1, 13))
+    ax1.set_xticklabels(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
+    ax1.tick_params(axis='x', rotation=45)
+
+    # Create a twin Axes sharing the xaxis
+    ax2 = ax1.twinx()
+
+    # Plot consumption
+    sns.lineplot(data=merged_df, x='New_month', y='consumption_(mw)', marker='x', ax=ax2, linestyle='--', color='green', label='Consumption')
+    ax2.set_ylabel('Consumption (MW)')
 
 
-    st.subheader("Line Plot for Consumption Over Time by Region:")
-    fig = px.bar(merged_df, x='New_year', y='consumption_(mw)', color='region_x',
-    title='Consumption Over Time by Region')
-    st.plotly_chart(fig)
+    # Display plot in Streamlit
+    st.pyplot(fig)
+
+
 
     
 
