@@ -11,10 +11,23 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+import gdown
 
 
+# File ID from the shareable link
+file_id_original = '1nZOLXerVzzSWKICW6xj8a1VXLvKq_fw9'
+url = f'https://drive.google.com/uc?id={file_id_original}'
+
+# Download the file
+original_file_path = 'eco2mix-regional-cons-def.csv'
+gdown.download(url, original_file_path, quiet=False)
 
 
+file_id_energy_revised = '1sRlCT0Sr7K02gER0tyFqWimhmd1aA6B_'
+url1 = f'https://drive.google.com/uc?id={file_id_energy_revised}'
+
+energy_revised_file_path = 'energy_revised.csv'
+gdown.download(url1, energy_revised_file_path, quiet=False)
 
 # Paths to CSV files
 original_file_path = 'eco2mix-regional-cons-def.csv'
@@ -22,15 +35,7 @@ energy_revised_file_path = 'energy_revised.csv'
 temperature_file_path = 'temperature-2.csv'
 merged_file_path = 'merged_df.csv'
 
-brew install git-lfs
-git lfs install
-git lfs track "*.csv"
-git add .gitattributes
-git commit -m "Track CSV files with Git LFS"
-git commit -m "Add large CSV files using Git LFS"
-git add /Users/tarunayikkara/Documents/Data Scientest/Energy Project/Streamlit/eco2mix-regional-cons-def.csv
-git add /Users/tarunayikkara/Documents/Data Scientest/Energy Project/Streamlit/energy_revised.csv
-git push origin main
+
 
 
 # Load the data
