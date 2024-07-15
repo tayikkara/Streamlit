@@ -11,32 +11,16 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-import gdown
 
 
-# File ID from the shareable link
-file_id_original = '1nZOLXerVzzSWKICW6xj8a1VXLvKq_fw9'
-url = f'https://drive.google.com/uc?id={file_id_original}'
-
-# Download the file
-original_file_path = 'eco2mix-regional-cons-def.csv'
-gdown.download(url, original_file_path, quiet=False)
 
 
-file_id_energy_revised = '1sRlCT0Sr7K02gER0tyFqWimhmd1aA6B_'
-url1 = f'https://drive.google.com/uc?id={file_id_energy_revised}'
-
-energy_revised_file_path = 'energy_revised.csv'
-gdown.download(url1, energy_revised_file_path, quiet=False)
 
 # Paths to CSV files
-original_file_path = 'eco2mix-regional-cons-def.csv'
-energy_revised_file_path = 'energy_revised.csv'
-temperature_file_path = 'temperature-2.csv'
-merged_file_path = 'merged_df.csv'
-
-
-
+original_file_path = '/Users/tarunayikkara/Documents/Data Scientest/Energy Project/Streamlit/eco2mix-regional-cons-def.csv'
+energy_revised_file_path = '/Users/tarunayikkara/Documents/Data Scientest/Energy Project/Streamlit/energy_revised.csv'
+temperature_file_path = '/Users/tarunayikkara/Documents/Data Scientest/Energy Project/Streamlit/temperature-2.csv'
+merged_file_path = '/Users/tarunayikkara/Documents/Data Scientest/Energy Project/Streamlit/merged_df.csv'
 
 # Load the data
 energy = pd.read_csv(original_file_path, sep=';')
@@ -103,6 +87,41 @@ temp = clean_column_names(temp)
 merged_df = pd.read_csv(merged_file_path, sep=',')
 
 
+model = pd.read_csv('merged_df.csv')
+model = model.drop(['nature', 'date_-_time', 'New_date', 'datetime_'], axis=1)
+feats = model.drop('consumption_(mw)', axis=1)
+target = model['consumption_(mw)']
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(feats, target, test_size=0.2, random_state=42)
+
+# One-hot encode the categorical features
+oneh = OneHotEncoder(drop='first', sparse_output=False)
+cat = ['region_x']
+
+encoded_train = oneh.fit_transform(X_train[cat])
+encoded_train_model = pd.DataFrame(encoded_train, columns=oneh.get_feature_names_out(cat), index=X_train.index)
+
+encoded_test = oneh.transform(X_test[cat])
+encoded_test_model = pd.DataFrame(encoded_test, columns=oneh.get_feature_names_out(cat), index=X_test.index)
+
+X_train = X_train.drop(cat, axis=1).join(encoded_train_model)
+X_test = X_test.drop(cat, axis=1).join(encoded_test_model)
+
+# Train the RandomForest model
+rf_regressor = RandomForestRegressor(n_estimators=100, max_depth=10, random_state=42)
+rf_regressor.fit(X_train, y_train)
+
+# Evaluate the model
+y_pred_test = rf_regressor.predict(X_test)
+y_pred_train = rf_regressor.predict(X_train)
+
+# Save the model
+with open('rf_model.pkl', 'wb') as file:
+    pickle.dump(rf_regressor, file)
+
+
+
 def Modelling():
     st.title("Model Comparison")
  
@@ -118,52 +137,17 @@ def Modelling():
             'RMSE test': [604.02, 447.382, 456.103, 616.399, 605.37, 632.44]
         }
     df = pd.DataFrame(data)
-    st.write(df)
+
+    def highlight_row(row):
+        return ['background-color: yellow' if row.Models == 'Random Forest Regressor' else '' for _ in row]
+
+    styled_df = df.style.apply(highlight_row, axis=1)
+
+    st.write(styled_df)
 
     if st.button('Random Forest Regressor'):
-
-
-        # Step 2: Instantiate the model with a maximum depth
-        # Preprocess the data
-        model = pd.read_csv(merged_file_path, sep=',')
-        model = model.drop(['nature', 'date_-_time', 'New_date', 'datetime_'], axis=1)
-        feats = model.drop('consumption_(mw)', axis=1)
-        target = model['consumption_(mw)']
-        X_train, X_test, y_train, y_test = train_test_split(feats, target, test_size=0.2, random_state=42)
-
-        # OneHotEncoding
-        oneh = OneHotEncoder(drop='first', sparse_output=False)
-        cat = ['region_x']
-        encoded_train = oneh.fit_transform(X_train[cat])
-        encoded_train_model = pd.DataFrame(encoded_train, columns=oneh.get_feature_names_out(cat), index=X_train.index)
-        encoded_test = oneh.transform(X_test[cat])
-        encoded_test_model = pd.DataFrame(encoded_test, columns=oneh.get_feature_names_out(cat), index=X_test.index)
-        X_train = X_train.drop(cat, axis=1).join(encoded_train_model)
-        X_test = X_test.drop(cat, axis=1).join(encoded_test_model)
-
-        # Scaling
-        sc = StandardScaler()
-        num = ['thermal_(mw)', 'nuclear_(mw)', 'wind_(mw)', 'solar_(mw)', 'hydraulic_(mw)', 'pumping_(mw)', 'bioenergies_(mw)', 'ech._physiques_(mw)', 'tavg_(°c)', 'New_year', 'New_month']
-        X_train[num] = sc.fit_transform(X_train[num])
-        X_test[num] = sc.transform(X_test[num])
-
-        # Random Forest Regressor
-        rf_regressor = RandomForestRegressor(n_estimators=100, random_state=42)
-        rf_regressor.fit(X_train, y_train)
-        y_pred_test = rf_regressor.predict(X_test)
-        y_pred_train = rf_regressor.predict(X_train)
-
-            # Save the trained model
-        with open('rf_regressor.pkl', 'wb') as file:
-            pickle.dump(rf_regressor, file)
-
-        # Save the scaler
-        with open('scaler.pkl', 'wb') as file:
-            pickle.dump(sc, file)
-
     
-
-        # Evaluation
+         # Evaluation
         mae_test = mean_absolute_error(y_test, y_pred_test)
         mse_test = mean_squared_error(y_test, y_pred_test)
         rmse_test = np.sqrt(mse_test)
@@ -173,6 +157,7 @@ def Modelling():
         rmse_train = np.sqrt(mse_train)
         r2_train = r2_score(y_train, y_pred_train)
 
+        # Display model results
         st.write(f'Test Data - Mean Absolute Error (MAE): {mae_test}')
         st.write(f'Test Data - Mean Squared Error (MSE): {mse_test}')
         st.write(f'Test Data - Root Mean Squared Error (RMSE): {rmse_test}')
@@ -181,25 +166,25 @@ def Modelling():
         st.write(f'Train Data - Mean Squared Error (MSE): {mse_train}')
         st.write(f'Train Data - Root Mean Squared Error (RMSE): {rmse_train}')
         st.write(f'Train Data - R-squared (R2): {r2_train}')
+        
+        st.subheader('Actual vs Predicted Consumption (Test Data)')
+        fig, ax = plt.subplots()
+        ax.scatter(y_test, y_pred_test, alpha=0.5)
+        ax.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--', lw=2)
+        ax.set_xlabel('Actual Consumption (MW)')
+        ax.set_ylabel('Predicted Consumption (MW)')
+        ax.set_title('Actual vs Predicted Consumption (Test Data)')
+        st.pyplot(fig)
 
-        # Plotting
-        fig_test, ax_test = plt.subplots()
-        ax_test.scatter(y_test, y_pred_test, alpha=0.5, label='Predicted vs Actual (Test)')
-        ax_test.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--', lw=2, label='Ideal Fit (y=x)')
-        ax_test.set_xlabel('Actual Consumption (MW)')
-        ax_test.set_ylabel('Predicted Consumption (MW)')
-        ax_test.set_title('Actual vs Predicted Consumption (Test Data)')
-        ax_test.legend()
-        st.pyplot(fig_test)
-
-        fig_train, ax_train = plt.subplots()
-        ax_train.scatter(y_train, y_pred_train, alpha=0.5, label='Predicted vs Actual (Train)')
-        ax_train.plot([y_train.min(), y_train.max()], [y_train.min(), y_train.max()], 'r--', lw=2, label='Ideal Fit (y=x)')
-        ax_train.set_xlabel('Actual Consumption (MW)')
-        ax_train.set_ylabel('Predicted Consumption (MW)')
-        ax_train.set_title('Actual vs Predicted Consumption (Train Data)')
-        ax_train.legend()
-        st.pyplot(fig_train)
+        # Plot actual vs predicted consumption for train data
+        st.subheader('Actual vs Predicted Consumption (Train Data)')
+        fig, ax = plt.subplots()
+        ax.scatter(y_train, y_pred_train, alpha=0.5)
+        ax.plot([y_train.min(), y_train.max()], [y_train.min(), y_train.max()], 'r--', lw=2)
+        ax.set_xlabel('Actual Consumption (MW)')
+        ax.set_ylabel('Predicted Consumption (MW)')
+        ax.set_title('Actual vs Predicted Consumption (Train Data)')
+        st.pyplot(fig)
 
 
         feature_importances = rf_regressor.feature_importances_
@@ -207,83 +192,21 @@ def Modelling():
 
         # Create a DataFrame for better visualization
         feature_importances_df = pd.DataFrame({'Feature': features, 'Importance': feature_importances})
-
-        # Sort the DataFrame by importance
         feature_importances_df = feature_importances_df.sort_values(by='Importance', ascending=False)
+
 
         # Display feature importances
         st.subheader('Feature Importances')
-        st.write(feature_importances_df)
-
-        # Plot feature importances
-        fig_importance, ax_importance = plt.subplots(figsize=(10, 6))
-        ax_importance.barh(feature_importances_df['Feature'], feature_importances_df['Importance'])
-        ax_importance.set_xlabel('Importance')
-        ax_importance.set_ylabel('Feature')
-        ax_importance.set_title('Feature Importances')
-        ax_importance.invert_yaxis()  # Invert y axis to have the most important feature on top
-        st.pyplot(fig_importance)
+        fig, ax = plt.subplots()
+        ax.barh(feature_importances_df['Feature'], feature_importances_df['Importance'])
+        ax.set_xlabel('Importance')
+        ax.set_ylabel('Feature')
+        ax.set_title('Feature Importances')
+        ax.invert_yaxis()
+        st.pyplot(fig)
 
 
-def Prediction():
-    def load_model(merged_file_path):
-        with open(merged_file_path, 'rb') as file:
-            model = pickle.load(file)
-        return model
 
-    def get_features(bioenergies_mw, ech_physiques_mw, thermal_mw, hydraulic_mw, tavg_c, nuclear_mw, pumping_mw, solar_mw, wind_mw, tmin_c, tmax_c):
-        features = np.array([bioenergies_mw, ech_physiques_mw, thermal_mw, hydraulic_mw, tavg_c, nuclear_mw, pumping_mw, solar_mw, wind_mw, tmin_c, tmax_c])
-        return features.reshape(1, -1)
-
-    def predict_surface_temperature(features):
-        model = load_model()
-        prediction = model.predict(features)
-        return np.round(prediction, 3)
-
-    st.header("Prediction")
-    st.subheader('Prediction Simulation with Random Forest Regressor')
-
-    # Load the DataFrame
-    data = pd.read_csv(merged_file_path, sep=',')
-    df3 = data.copy()
-
-    # Get the minimum and maximum values for each feature from the DataFrame
-    bioenergies_mw_min, bioenergies_mw_max = df3['bioenergies_(mw)'].min(), df3['bioenergies_(mw)'].max()
-    ech_physiques_mw_min, ech_physiques_mw_max = df3['ech._physiques_(mw)'].min(), df3['ech._physiques_(mw)'].max()
-    thermal_mw_min, thermal_mw_max = df3['thermal_(mw)'].min(), df3['thermal_(mw)'].max()
-    hydraulic_mw_min, hydraulic_mw_max = df3['hydraulic_(mw)'].min(), df3['hydraulic_(mw)'].max()
-    tavg_c_min, tavg_c_max = df3['tavg_(°c)'].min(), df3['tavg_(°c)'].max()
-    nuclear_mw_min, nuclear_mw_max = df3['nuclear_(mw)'].min(), df3['nuclear_(mw)'].max()
-    pumping_mw_min, pumping_mw_max = df3['pumping_(mw)'].min(), df3['pumping_(mw)'].max()
-    solar_mw_min, solar_mw_max = df3['solar_(mw)'].min(), df3['solar_(mw)'].max()
-    wind_mw_min, wind_mw_max = df3['wind_(mw)'].min(), df3['wind_(mw)'].max()
-    tmin_c_min, tmin_c_max = df3['tmin_(°c)'].min(), df3['tmin_(°c)'].max()
-    tmax_c_min, tmax_c_max = df3['tmax_(°c)'].min(), df3['tmax_(°c)'].max()
-
-    # Feature inputs
-    col1, col2 = st.columns(2)
-
-    with col1:
-        bioenergies_mw = st.slider("Bioenergies (MW)", min_value=float(bioenergies_mw_min), max_value=float(bioenergies_mw_max), value=bioenergies_mw_min)
-        ech_physiques_mw = st.slider("Ech. Physiques (MW)", min_value=float(ech_physiques_mw_min), max_value=float(ech_physiques_mw_max), value=ech_physiques_mw_min)
-        thermal_mw = st.slider("Thermal (MW)", min_value=float(thermal_mw_min), max_value=float(thermal_mw_max), value=thermal_mw_min)
-        hydraulic_mw = st.slider("Hydraulic (MW)", min_value=float(hydraulic_mw_min), max_value=float(hydraulic_mw_max), value=hydraulic_mw_min)
-        tavg_c = st.slider("Avg Temperature (°C)", min_value=float(tavg_c_min), max_value=float(tavg_c_max), value=tavg_c_min)
-        nuclear_mw = st.slider("Nuclear (MW)", min_value=float(nuclear_mw_min), max_value=float(nuclear_mw_max), value=nuclear_mw_min)
-
-    with col2:
-        pumping_mw = st.slider("Pumping (MW)", min_value=float(pumping_mw_min), max_value=float(pumping_mw_max), value=pumping_mw_min)
-        solar_mw = st.slider("Solar (MW)", min_value=float(solar_mw_min), max_value=float(solar_mw_max), value=solar_mw_min)
-        wind_mw = st.slider("Wind (MW)", min_value=float(wind_mw_min), max_value=float(wind_mw_max), value=wind_mw_min)
-        tmin_c = st.slider("Min Temperature (°C)", min_value=float(tmin_c_min), max_value=float(tmin_c_max), value=tmin_c_min)
-        tmax_c = st.slider("Max Temperature (°C)", min_value=float(tmax_c_min), max_value=float(tmax_c_max), value=tmax_c_min)
-
-    # Add a button for prediction
-    if st.button("Predict"):
-        features = get_features(bioenergies_mw, ech_physiques_mw, thermal_mw, hydraulic_mw, tavg_c, nuclear_mw, pumping_mw, solar_mw, wind_mw, tmin_c, tmax_c)
-        prediction = predict_surface_temperature(features)
-        st.write(f"The prediction of the energy consumption is: {prediction[0]}")
-# Sidebar
 
 st.markdown(
     """
@@ -550,7 +473,7 @@ elif selection == "Visualization":
 
 # Modelling Section
 elif selection == "Modelling":
-    st.header("Data Model")
+    st.header("Data Models")
     st.header('Linear Regression')
     st.write('Performance Summary: Consistent performance with high R² values for both training (0.914) and test (0.916) sets.')
     st.write('Error Analysis: Moderate prediction errors with MAE around 470 MW and RMSE around 604 MW, indicating some large prediction errors.')
@@ -592,7 +515,48 @@ elif selection == "Modelling":
        
 # Prediction Section
 elif selection == "Prediction":
-    Prediction()
+    st.title('Consumption Prediction App')
+
+    with open('rf_model.pkl', 'rb') as file:
+        model = pickle.load(file)
+
+        # Get the feature importances
+        feature_importances = model.feature_importances_
+        features = X_train.columns
+
+        # Create a DataFrame for better visualization
+        feature_importances_df = pd.DataFrame({'Feature': features, 'Importance': feature_importances})
+        feature_importances_df = feature_importances_df.sort_values(by='Importance', ascending=False)
+
+        # Display the top 5 important features
+        top_features = feature_importances_df.head(5)['Feature'].values
+
+        top_features = feature_importances_df.head(5)['Feature'].values
+
+        # Sliders for top 5 important features
+        st.header('Input Features for Prediction')
+        input_data = []
+        for feature in top_features:
+            min_val = float(X_train[feature].min())
+            max_val = float(X_train[feature].max())
+            mean_val = float(X_train[feature].mean())
+            value = st.slider(f'{feature}', min_val, max_val, mean_val)
+            input_data.append(value)
+
+        # Convert input data to DataFrame
+        input_df = pd.DataFrame([input_data], columns=top_features)
+
+        # Prediction button
+        if st.button('Predict'):
+            # Only keep top_features in input_df
+            input_encoded_df = input_df[top_features]
+            
+            # Ensure columns order matches the model's expected input
+            input_encoded_df = input_encoded_df.reindex(columns=features, fill_value=0)
+            
+            prediction = model.predict(input_encoded_df)
+            st.write(f'Predicted Consumption: {prediction[0]} MW')
+
 
 # Add a button for prediction
 #if st.button("Predict"):
