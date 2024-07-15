@@ -22,6 +22,7 @@ energy_revised_file_path = 'energy_revised.csv'
 temperature_file_path = 'temperature-2.csv'
 merged_file_path = 'merged_df.csv'
 
+brew install git-lfs
 git lfs install
 git lfs track "*.csv"
 git add .gitattributes
